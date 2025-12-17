@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Disparador WhatsApp BR</title>
+    
+    <!-- ÍCONES -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- BIBLIOTECA PARA LER EXCEL (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <script>
+      // ============================================================
+      // CONFIGURAÇÃO DA API
+      // ============================================================
+      const API_URL = "https://script.google.com/macros/s/AKfycbznZNErEiLFYxlV6bNG0f_318rw6o15Qsi9-N5glb2Kcdstdowkf926pq6IOcY7OCA0qQ/exec"; 
+      // ============================================================
+    </script>
+
+    <style>
+      /* --- VARIAVEIS E RESET --- */
+      :root {
+        --primary: #008069; 
+        --primary-dark: #006d59; 
+        --bg-color: #eef2f5;
+        --card-bg: #ffffff; 
+        --text-main: #1c1e21; 
+        --text-sec: #667781;
+        --danger: #d32f2f; 
+        --warning-bg: #ffebee; 
+        --success: #4caf50; 
+        --blue-restore: #2196f3;
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+        background-color: var(--bg-color); 
+        margin: 0; padding: 0; 
+        color: var(--text-main); 
+        padding-bottom: 80px; 
+      }
+
+      /* --- HEADER --- */
+      header { 
+        background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%); 
+        color: white; 
+        padding: 15px 20px; 
+        text-align: center; 
+        position: sticky; 
+        top: 0; 
+        z-index: 100; 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.15); 
+        display: flex; justify-content: space-between; align-items: center;
+      }
+      h1 { margin: 0; font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px; }
+      
+      /* --- SETUP WARNING --- */
+      #setup-warning {
+        background: #fff3cd; color: #856404; padding: 20px; text-align: center;
+        border-bottom: 1px solid #ffeeba; display: none;
+      }
+
+      .container { padding: 15px; max-width: 600px; margin: 0 auto; }
+
+      /* --- SEARCH & INPUTS --- */
+      .search-bar-container {
+        background: white; padding: 10px 15px; border-radius: 25px; margin-bottom: 15px;
+        display: flex; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        border: 1px solid transparent; transition: all 0.3s;
+      }
+      .search-bar-container:focus-within { border-color: var(--primary); box-shadow: 0 4px 8px rgba(0,128,105,0.15); }
+      .search-bar-container .material-icons { color: #999; margin-right: 10px; }
+      .search-bar-container input { border: none; outline: none; width: 100%; font-size: 1rem; color: var(--text-main); background: transparent; }
+
+      /* --- CARDS --- */
+      .import-card {
+        background: white; padding: 30px 20px; border-radius: 15px;
+        text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        border: 2px dashed #ccc; transition: all 0.3s;
+      }
+      .import-card:hover { border-color: var(--primary); background: #f9fffd; }
+      .import-icon { font-size: 48px; color: var(--primary); margin-bottom: 10px; }
+
+      .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; margin-top: 15px; }
+      .file-input-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+      .btn-select-file {
+        background: var(--primary); color: white; padding: 12px 25px;
+        border-radius: 30px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;
+        box-shadow: 0 4px 10px rgba(0,128,105,0.2); cursor: pointer;
+      }
+      .import-result {
+        margin-top: 20px; background: white; padding: 20px; border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08); display: none;
+      }
+      .result-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+      .result-value { font-weight: bold; }
+      .val-success { color: var(--success); }
+      .val-warn { color: #f57c00; }
+      .val-danger { color: var(--danger); }
+
+      /* --- UI ELEMENTS --- */
+      #loading-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(255,255,255,0.95); z-index: 2000;
+        display: flex; flex-direction: column; justify-content: center; align-items: center;
+        transition: opacity 0.3s; pointer-events: none; opacity: 0;
+      }
+      .spinner {
+        width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary);
+        border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 10px;
+      }
+      .loading-text { color: var(--primary); font-weight: 600; font-size: 0.9rem; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+      #sync-indicator {
+        position: fixed; top: 60px; right: 15px;
+        background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 15px;
+        font-size: 0.7rem; z-index: 99; display: none; align-items: center; gap: 5px;
+      }
+
+      #toast-container { position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%); z-index: 3000; width: 90%; max-width: 400px; text-align: center; pointer-events: none; }
+      .toast {
+        background: rgba(30, 30, 30, 0.9); color: white; padding: 12px 20px; border-radius: 25px;
+        margin-top: 10px; display: inline-block; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        animation: fadeUp 0.3s ease;
+      }
+      @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+      .view-section { display: none; opacity: 0; transition: opacity 0.3s; }
+      .view-section.active { display: block; opacity: 1; }
+
+      /* --- BOTÕES FLUTUANTES --- */
+      .fab-container { position: fixed; bottom: 85px; right: 20px; display: flex; flex-direction: column; gap: 15px; z-index: 1000; }
+      .fab-btn {
+        width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; transition: transform 0.2s; border: none; outline: none; color: white;
+      }
+      .fab-btn:active { transform: scale(0.95); }
+      .fab-sync { background-color: white; color: var(--primary); }
+      .fab-add { background-color: var(--primary); }
+
+      /* --- CONTACT CARDS --- */
+      .contact-card { 
+        background: var(--card-bg); padding: 15px; border-radius: 12px; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 12px; 
+        display: flex; justify-content: space-between; align-items: center; 
+        border-left: 4px solid transparent; transition: transform 0.2s, opacity 0.3s; 
+      }
+      .contact-card.removing { transform: translateX(100%); opacity: 0; }
+      .contact-card.restoring { transform: translateX(-100%); opacity: 0; }
+      .card-pending { border-left-color: var(--primary); }
+      .card-done { border-left-color: var(--text-sec); opacity: 0.8; }
+      .card-invalid { border-left-color: var(--danger); background-color: #fffbfb; }
+      .card-invalid .contact-phone { color: var(--danger); font-weight: 700; }
+      
+      .contact-info { flex-grow: 1; padding-right: 10px; overflow: hidden; }
+      .contact-name { font-weight: 700; font-size: 1rem; color: var(--text-main); margin-bottom: 4px; }
+      .contact-phone { color: var(--text-sec); font-size: 0.85rem; display: flex; align-items: center; gap: 4px; }
+      .invalid-badge { background: var(--warning-bg); color: var(--danger); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 5px; }
+
+      .actions { display: flex; gap: 8px; }
+      .btn-icon { background: #f0f2f5; border-radius: 50%; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; border: none; }
+      .btn-icon:disabled { opacity: 0.5; cursor: not-allowed; }
+      
+      .material-icons.send { color: var(--primary); }
+      .material-icons.edit { color: var(--text-sec); }
+      .material-icons.restore { color: var(--blue-restore); }
+      .material-icons.check { color: #aaa; }
+      .btn-check { background-color: white; border: 1px solid #ddd; }
+      .btn-check:active { background-color: #e8f5e9; border-color: var(--success); }
+
+      /* --- CONFIG --- */
+      .config-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+      .tag-highlight-box { background: #e0f2f1; border: 1px dashed var(--primary); border-radius: 8px; padding: 15px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+      .tag-chip { background: white; border: 1px solid var(--primary); color: var(--primary); padding: 5px 10px; border-radius: 15px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+      .config-card textarea { width: 100%; height: 140px; padding: 15px; border: 1px solid #ddd; border-radius: 10px; font-size: 1rem; resize: none; background: #fafafa; }
+      .btn-save-config { background-color: var(--primary); color: white; padding: 14px; border-radius: 30px; width: 100%; font-weight: 600; font-size: 1rem; margin-top: 15px; border: none; cursor: pointer; display: flex; justify-content: center; gap: 8px; }
+      
+      .btn-restore-all { background-color: #e3f2fd; color: var(--blue-restore); border: 1px solid #bbdefb; padding: 10px 20px; border-radius: 25px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto 15px auto; cursor: pointer; width: 100%; max-width: 250px; }
+
+      /* --- FOOTER & NAV --- */
+      .app-footer { text-align: center; margin-top: 30px; margin-bottom: 20px; font-size: 0.75rem; color: #999; font-weight: 500; }
+      
+      .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0 15px 0; z-index: 900; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); border-radius: 20px 20px 0 0; }
+      .nav-item { border: none; background: none; color: #999; font-size: 0.7rem; display: flex; flex-direction: column; align-items: center; width: 25%; cursor: pointer; }
+      .nav-item.active { color: var(--primary); }
+      .nav-item .material-icons { font-size: 26px; margin-bottom: 4px; }
+
+      /* --- MODAIS --- */
+      .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 2500; backdrop-filter: blur(3px); }
+      .modal { background: white; width: 85%; max-width: 350px; padding: 25px; border-radius: 15px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+      @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .modal h2 { margin-top: 0; font-size: 1.2rem; color: #333; }
+      .modal input, .modal textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; margin-top: 5px; display:block; margin-bottom: 15px; }
+      .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+      .btn-confirm { background: var(--primary); color: white; padding: 10px 20px; border-radius: 20px; font-weight: 600; border: none; cursor: pointer; }
+      .btn-cancel { background: #f5f5f5; color: #666; padding: 10px 20px; border-radius: 20px; font-weight: 600; border: none; cursor: pointer; }
+      
+      .empty-state { text-align: center; padding: 50px 20px; color: #999; }
+      .empty-state .material-icons { font-size: 60px; color: #e0e0e0; margin-bottom: 10px; }
+      #system-error { display:none; background:#ffeba; color: #d32f2f; padding:10px; text-align:center; font-size:0.8rem; margin:10px; border-radius:8px; border:1px solid #ffcdd2; }
+    </style>
+  </head>
+  <body>
+
+    <header>
+      <h1>Disparador WhatsApp BR</h1>
+    </header>
+
+    <div id="setup-warning">
+      ⚠️ <b>Configuração Necessária</b><br>
+      Abra o arquivo <code>index.html</code> e cole sua <b>API_URL</b> na linha 18.
+    </div>
+
+    <div id="toast-container"></div>
+    <div id="loading-overlay"><div class="spinner"></div><div class="loading-text" id="loading-text">Carregando...</div></div>
+
+    <!-- FABs -->
+    <div class="fab-container">
+      <button class="fab-btn fab-add" id="fabAddContact" onclick="abrirAdicionar()" title="Adicionar Contato"><span class="material-icons">person_add</span></button>
+      <button class="fab-btn fab-sync" onclick="sincronizarComNuvem(true)" title="Atualizar"><span class="material-icons">sync</span></button>
+    </div>
+
+    <div class="container">
+      <div id="system-error"></div>
+
+      <!-- BUSCA -->
+      <div id="searchArea" class="search-bar-container">
+        <span class="material-icons">search</span>
+        <input type="text" id="searchInput" placeholder="Buscar..." onkeyup="filtrarListas()" autocomplete="off">
+      </div>
+
+      <!-- CONTATOS -->
+      <div id="view-home" class="view-section active">
+        <div id="contactList"></div>
+      </div>
+
+      <!-- ENVIADOS -->
+      <div id="view-enviados" class="view-section">
+        <div style="text-align:center; padding:10px; color:#666; font-size:0.9rem; font-weight:600; text-transform:uppercase;">Histórico</div>
+        <button class="btn-restore-all" onclick="restaurarTodos()"><span class="material-icons">settings_backup_restore</span> Restaurar Todos</button>
+        <div id="enviadosList"></div>
+      </div>
+
+      <!-- IMPORTAR -->
+      <div id="view-import" class="view-section">
+        <div class="import-card">
+          <div class="import-icon"><span class="material-icons" style="font-size:60px">cloud_upload</span></div>
+          <h3>Importar Dados</h3>
+          <p style="color:#666; font-size:0.9rem; margin-bottom:20px;">Use .xlsx ou .csv com colunas: <strong>Nome</strong> e <strong>Telefone</strong>.</p>
+          <div class="file-input-wrapper">
+            <label class="btn-select-file">
+              <span class="material-icons">folder_open</span> Selecionar
+              <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" onchange="processarArquivo()">
+            </label>
+          </div>
+        </div>
+        <div id="importResult" class="import-result">
+          <h4 style="margin-top:0; color:var(--primary)">Resultado</h4>
+          <div class="result-item"><span>Novos (Add):</span><span class="result-value val-success" id="resAdded">0</span></div>
+          <div class="result-item"><span>Já na Lista:</span><span class="result-value val-warn" id="resExists">0</span></div>
+          <div class="result-item" style="border-bottom:none"><span>Repetidos:</span><span class="result-value val-danger" id="resDup">0</span></div>
+          <button class="btn-save-config" onclick="concluirImportacao()" style="margin-top:15px">Concluir</button>
+        </div>
+      </div>
+
+      <!-- CONFIG -->
+      <div id="view-config" class="view-section">
+        <div class="config-card">
+          <div class="tag-highlight-box">
+            <div class="tag-info"><h4>Variável Nome</h4><p>Substitui pelo nome do cliente.</p></div>
+            <div class="tag-chip" onclick="copiarTag()"><span class="material-icons" style="font-size:16px">content_copy</span> {nome}</div>
+          </div>
+          <label style="margin-left:5px;">Modelo da Mensagem</label>
+          <textarea id="templateMsg" placeholder="Ex: Olá {nome}..."></textarea>
+          <button class="btn-save-config" onclick="salvarTemplate()"><span class="material-icons">save</span> Salvar</button>
+        </div>
+        <div class="app-footer">Desenvolvido por Thiego Pereira</div>
+      </div>
+    </div>
+
+    <!-- NAV -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="mudarAba('home', this)"><span class="material-icons">people</span><span>Contatos</span></button>
+      <button class="nav-item" onclick="mudarAba('enviados', this)"><span class="material-icons">task_alt</span><span>Enviados</span></button>
+      <button class="nav-item" onclick="mudarAba('import', this)"><span class="material-icons">upload_file</span><span>Importar</span></button>
+      <button class="nav-item" onclick="mudarAba('config', this)"><span class="material-icons">settings</span><span>Ajustes</span></button>
+    </nav>
+
+    <!-- MODAIS -->
+    <div id="modalConfirm" class="modal-overlay">
+      <div class="modal">
+        <h2 id="confirmTitle">Confirmação</h2><p id="confirmText">?</p>
+        <div class="modal-buttons"><button class="btn-cancel" onclick="fecharModal('modalConfirm')">Não</button><button class="btn-confirm" id="btnConfirmYes">Sim</button></div>
+      </div>
+    </div>
+    <div id="modalEdit" class="modal-overlay">
+      <div class="modal">
+        <h2>Editar</h2><input type="hidden" id="editId"><label>Nome</label><input type="text" id="editName"><label>WhatsApp</label><input type="tel" id="editPhone">
+        <div class="modal-buttons"><button class="btn-cancel" onclick="fecharModal('modalEdit')">Cancelar</button><button class="btn-confirm" onclick="confirmarEdicao()">Salvar</button></div>
+      </div>
+    </div>
+    <div id="modalAdd" class="modal-overlay">
+      <div class="modal">
+        <h2>Adicionar</h2><label>Nome</label><input type="text" id="addName"><label>WhatsApp</label><input type="tel" id="addPhone" placeholder="DDD+Número">
+        <div class="modal-buttons"><button class="btn-cancel" onclick="fecharModal('modalAdd')">Cancelar</button><button class="btn-confirm" onclick="confirmarAdicionar()">Adicionar</button></div>
+      </div>
+    </div>
+    <div id="modalSend" class="modal-overlay">
+      <div class="modal">
+        <h2>Enviar</h2><input type="hidden" id="sendId"><input type="hidden" id="sendPhone"><input type="hidden" id="sendName"><textarea id="sendMessage" rows="6"></textarea>
+        <div class="modal-buttons"><button class="btn-cancel" onclick="fecharModal('modalSend')">Voltar</button><button class="btn-confirm" onclick="finalizarEnvio()">Enviar</button></div>
+      </div>
+    </div>
+
+    <script>
+      const CACHE_KEY = 'app_whatsapp_br_v1';
+      let listaContatos=[], listaEnviados=[], templateAtual="";
+
+      // --- HELPERS ---
+      function showLoader(s,t="Carregando..."){const e=document.getElementById('loading-overlay');document.getElementById('loading-text').innerText=t;e.style.opacity=s?"1":"0";e.style.pointerEvents=s?"all":"none";}
+      function toggleSync(s){document.getElementById('sync-indicator').style.display=s?'flex':'none';}
+      function showToast(m){const c=document.getElementById('toast-container'),t=document.createElement('div');t.className='toast';t.innerText=m;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},3000);}
+      function askConfirm(t,m,cb){document.getElementById('confirmTitle').innerText=t;document.getElementById('confirmText').innerText=m;const b=document.getElementById('btnConfirmYes'),n=b.cloneNode(true);b.parentNode.replaceChild(n,b);n.onclick=()=>{fecharModal('modalConfirm');cb();};document.getElementById('modalConfirm').style.display='flex';}
+      function fecharModal(id){document.getElementById(id).style.display='none';}
+      function safe(s){return s?s.replace(/'/g,"").replace(/"/g,""):"";}
+      function validarTelefone(f){if(!f)return false;const n=String(f).replace(/\D/g,'');return n.length>=10&&n.length<=11;}
+      function copiarTag(){const e=document.createElement('textarea');e.value="{nome}";document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showToast("Copiado!");}
+
+      // --- API CLIENT ---
+      async function callApi(action, params={}, method='POST') {
+        if(!API_URL) throw new Error("API_URL não configurada.");
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action, params }),
+          headers: { "Content-Type": "text/plain;charset=utf-8" }
+        });
+        return await response.json();
+      }
+
+      // --- APP LOGIC ---
+      window.onload = function() {
+        if(!API_URL) { document.getElementById('setup-warning').style.display='block'; return; }
+        carregarLocalmente();
+        sincronizarComNuvem();
+      };
+
+      function carregarLocalmente(){const c=localStorage.getItem(CACHE_KEY);if(c){try{const d=JSON.parse(c);listaContatos=d.contatos||[];listaEnviados=d.enviados||[];templateAtual=d.template||"";atualizarInterface();}catch(e){}}}
+      function salvarLocalmente(){localStorage.setItem(CACHE_KEY,JSON.stringify({contatos:listaContatos,enviados:listaEnviados,template:templateAtual}));}
+      
+      function sincronizarComNuvem(force=false){
+        if(force) showLoader(true,"Atualizando...");
+        callApi('getDados').then(res=>{
+          if(force) showLoader(false);
+          if(res.success){listaContatos=res.contatos||[];listaEnviados=res.enviados||[];templateAtual=res.template||"";salvarLocalmente();atualizarInterface();if(force)showToast("Atualizado!");}
+        }).catch(e=>{if(force)showLoader(false);console.error(e);});
+      }
+
+      function atualizarInterface(){const t=document.getElementById('templateMsg');if(t&&document.activeElement!==t)t.value=templateAtual;filtrarListas();}
+
+      // --- RENDER ---
+      function mudarAba(a,b){
+        document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active'));document.getElementById('view-'+a).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));if(b)b.classList.add('active');
+        const s=document.getElementById('searchArea'), fab=document.getElementById('fabAddContact');
+        if(a==='config'||a==='import'){s.style.display='none';if(fab)fab.style.display='none';}
+        else{s.style.display='flex';if(fab)fab.style.display=(a==='home'?'flex':'none');filtrarListas();}
+      }
+      function filtrarListas(){if(document.getElementById('view-home').classList.contains('active'))renderLista(listaContatos,'contactList',false);else if(document.getElementById('view-enviados').classList.contains('active'))renderLista(listaEnviados,'enviadosList',true);}
+      
+      function renderLista(l,dId,isE){
+        const div=document.getElementById(dId);div.innerHTML="";const term=document.getElementById('searchInput').value.toLowerCase();
+        const filt=l.filter(c=>{if(!c||c.length<3||!c[0])return false;return (c[1]||"").toLowerCase().includes(term)||(c[2]||"").toString().includes(term);});
+        if(filt.length===0){div.innerHTML=`<div class="empty-state"><span class="material-icons">search_off</span><p>Vazio</p></div>`;return;}
+        filt.forEach(c=>{
+          const id=c[0],nm=c[1]||"Sem Nome",fn=c[2]||"";const v=validarTelefone(fn);
+          const bg=!v&&!isE?`<span class="invalid-badge"><span class="material-icons warning">warning</span> Erro</span>`:"";
+          const cl=!v&&!isE?'card-invalid':(isE?'card-done':'card-pending');
+          let act="";
+          if(isE) act=`<button class="btn-icon" onclick="restaurarContato('${id}','${safe(nm)}','${safe(fn)}')"><span class="material-icons restore">undo</span></button>`;
+          else act=`<button class="btn-icon" ${!v?'disabled':''} onclick="prepararEnvio('${id}','${safe(nm)}','${safe(fn)}')"><span class="material-icons send">send</span></button><button class="btn-icon btn-check" onclick="moverEnviado('${id}','${safe(nm)}','${safe(fn)}')"><span class="material-icons check">check</span></button><button class="btn-icon" onclick="abrirEdicao('${id}','${safe(nm)}','${safe(fn)}')"><span class="material-icons edit">edit</span></button>`;
+          const el=document.createElement('div');el.className=`contact-card ${cl}`;el.id=(isE?'card-env-':'card-')+id;
+          el.innerHTML=`<div class="contact-info"><div class="contact-name">${nm} ${bg}</div><div class="contact-phone"><span class="material-icons" style="font-size:14px">phone</span> ${fn}</div>${isE?`<div class="contact-date">Enviado: ${c[3]||""}</div>`:""}</div><div class="actions">${act}</div>`;
+          div.appendChild(el);
+        });
+      }
+
+      // --- IMPORT ---
+      function processarArquivo(){
+        const f=document.getElementById('fileInput').files[0];if(!f)return;showLoader(true,"Lendo...");
+        const r=new FileReader();
+        r.onload=function(e){
+          const d=new Uint8Array(e.target.result),w=XLSX.read(d,{type:'array'}),sn=w.SheetNames[0],s=w.Sheets[sn],j=XLSX.utils.sheet_to_json(s);
+          showLoader(true,"Processando...");
+          callApi('importarContatos', {lista:j}).then(r=>{
+            showLoader(false);
+            if(r.success){
+              document.getElementById('resAdded').innerText=r.adicionados;document.getElementById('resExists').innerText=r.jaNaLista;document.getElementById('resDup').innerText=r.duplicadosNoArquivo;
+              document.getElementById('importResult').style.display='block'; showToast("Feito!");
+            }else alert("Erro: "+r.error);
+          }).catch(e=>{showLoader(false);alert(e);});
+        };r.readAsArrayBuffer(f);
+      }
+      function concluirImportacao(){document.getElementById('importResult').style.display='none';document.getElementById('fileInput').value="";const btn=document.querySelector('.nav-item[onclick*="home"]');mudarAba('home',btn);sincronizarComNuvem(true);}
+
+      // --- ACTIONS ---
+      function restaurarTodos(){if(listaEnviados.length===0){showToast("Vazio.");return;}askConfirm("Restaurar Tudo","Mover histórico para pendentes?",()=>{showLoader(true);callApi('restaurarTodosContatos').then(()=>{showLoader(false);showToast("Restaurado!");sincronizarComNuvem(true);});});}
+      
+      function moverEnviado(id,n,f){
+        askConfirm("Concluir","Mover para enviados?",()=>{
+          document.getElementById('card-'+id).classList.add('removing');
+          const i=listaContatos.findIndex(x=>x[0]==id);
+          if(i>-1){const it=listaContatos.splice(i,1)[0];it[3]=new Date().toLocaleString();listaEnviados.push(it);salvarLocalmente();}
+          callApi('moverParaEnviados',{id,nome:n,numero:f}); setTimeout(()=>{filtrarListas();showToast("Feito!");},300);
+        });
+      }
+      
+      function restaurarContato(id,n,f){
+        askConfirm("Restaurar","Voltar para pendentes?",()=>{
+          document.getElementById('card-env-'+id).classList.add('restoring');
+          const i=listaEnviados.findIndex(x=>x[0]==id);
+          if(i>-1){const it=listaEnviados.splice(i,1)[0];listaContatos.push(it);salvarLocalmente();}
+          callApi('moverParaContatos',{id,nome:n,numero:f}); setTimeout(()=>{filtrarListas();showToast("Feito!");},300);
+        });
+      }
+
+      function abrirAdicionar(){document.getElementById('addName').value="";document.getElementById('addPhone').value="";document.getElementById('modalAdd').style.display='flex';}
+      
+      function confirmarAdicionar(){
+        const n=document.getElementById('addName').value, f=document.getElementById('addPhone').value;
+        if(!n||!f){showToast("Preencha tudo");return;} if(!validarTelefone(f)){showToast("Número inválido");return;}
+        showLoader(true);
+        callApi('adicionarContato',{nome:n,telefone:f}).then(res=>{
+          showLoader(false);
+          if(res.success){ showToast("Adicionado!"); fecharModal('modalAdd'); listaContatos.push([res.id,n,f]); salvarLocalmente(); filtrarListas(); }
+          else alert(res.error);
+        });
+      }
+
+      function confirmarEdicao(){
+        const id=document.getElementById('editId').value,n=document.getElementById('editName').value,f=document.getElementById('editPhone').value;
+        const i=listaContatos.findIndex(x=>x[0]==id);
+        if(i>-1){listaContatos[i][1]=n;listaContatos[i][2]=f;salvarLocalmente();filtrarListas();}
+        fecharModal('modalEdit');showToast("Salvo!");callApi('salvarEdicao',{id,nome:n,numero:f});
+      }
+
+      function prepararEnvio(id,n,f){
+        let m=templateAtual.replace(/{nome}/gi,n);
+        document.getElementById('sendId').value=id;document.getElementById('sendPhone').value=f;document.getElementById('sendName').value=n;document.getElementById('sendMessage').value=m;
+        document.getElementById('modalSend').style.display='flex';
+      }
+
+      function finalizarEnvio(){
+        let fIn=document.getElementById('sendPhone').value,n=document.getElementById('sendName').value,msg=document.getElementById('sendMessage').value,id=document.getElementById('sendId').value;
+        let f=String(fIn).replace(/\D/g,''); if(f.length>=10&&f.length<=11)f='55'+f;else if(!f.startsWith('55')&&f.length>0)f='55'+f;
+        const a=document.createElement('a');a.href=`https://api.whatsapp.com/send?phone=${f}&text=${encodeURIComponent(msg)}`;a.target="_blank";a.rel="noopener noreferrer";a.click();
+        fecharModal('modalSend');showToast("Abrindo WhatsApp...");
+        const c=document.getElementById('card-'+id);if(c)c.classList.add('removing');
+        const i=listaContatos.findIndex(x=>x[0]==id);
+        if(i>-1){const it=listaContatos.splice(i,1)[0];it[3]=new Date().toLocaleString();listaEnviados.push(it);salvarLocalmente();}
+        setTimeout(()=>filtrarListas(),500);callApi('moverParaEnviados',{id,nome:n,numero:fIn});
+      }
+
+      function abrirEdicao(id,n,f){document.getElementById('editId').value=id;document.getElementById('editName').value=n;document.getElementById('editPhone').value=f;document.getElementById('modalEdit').style.display='flex';}
+      function salvarTemplate(){const m=document.getElementById('templateMsg').value;templateAtual=m;salvarLocalmente();showToast("Enviando...");callApi('salvarTemplate',{mensagem:m}).then(()=>showToast("Salvo na nuvem!"));}
+    </script>
+  </body>
+</html>
