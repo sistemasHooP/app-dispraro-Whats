@@ -194,6 +194,7 @@
       .modal { background: white; width: 85%; max-width: 350px; padding: 25px; border-radius: 15px; box-shadow: 0 15px 40px rgba(0,0,0,0.2); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
       @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
       .modal h2 { margin-top: 0; font-size: 1.2rem; color: #333; }
+      .modal p { color: #666; font-size: 0.95rem; line-height: 1.5; margin-bottom: 20px; }
       .modal input, .modal textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; margin-top: 5px; display:block; margin-bottom: 15px; }
       .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
       .btn-confirm { background: var(--primary); color: white; padding: 10px 20px; border-radius: 20px; font-weight: 600; border: none; cursor: pointer; }
@@ -209,6 +210,11 @@
     <header>
       <h1>Disparador WhatsApp BR</h1>
     </header>
+
+    <!-- Indicador de Sincronia (ADICIONADO DE VOLTA) -->
+    <div id="sync-indicator">
+      <span class="material-icons" style="font-size:14px; animation:spin 1s infinite linear;">sync</span> Atualizando...
+    </div>
 
     <div id="setup-warning">
       ⚠️ <b>Configuração Necessária</b><br>
@@ -227,112 +233,267 @@
     <div class="container">
       <div id="system-error"></div>
 
-      <!-- BUSCA -->
+      <!-- BARRA DE PESQUISA -->
       <div id="searchArea" class="search-bar-container">
         <span class="material-icons">search</span>
-        <input type="text" id="searchInput" placeholder="Buscar..." onkeyup="filtrarListas()" autocomplete="off">
+        <input type="text" id="searchInput" placeholder="Buscar por nome ou telefone..." onkeyup="filtrarListas()" autocomplete="off">
       </div>
 
-      <!-- CONTATOS -->
+      <!-- ABA 1: CONTATOS -->
       <div id="view-home" class="view-section active">
         <div id="contactList"></div>
       </div>
 
-      <!-- ENVIADOS -->
+      <!-- ABA 2: ENVIADOS -->
       <div id="view-enviados" class="view-section">
-        <div style="text-align:center; padding:10px; color:#666; font-size:0.9rem; font-weight:600; text-transform:uppercase;">Histórico</div>
-        <button class="btn-restore-all" onclick="restaurarTodos()"><span class="material-icons">settings_backup_restore</span> Restaurar Todos</button>
+        <div style="padding: 10px 0; color: #666; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; text-align: center;">
+          Histórico
+        </div>
+        <button class="btn-restore-all" onclick="restaurarTodos()">
+          <span class="material-icons">settings_backup_restore</span> Restaurar Todos
+        </button>
         <div id="enviadosList"></div>
       </div>
 
-      <!-- IMPORTAR -->
+      <!-- ABA 3: IMPORTAR -->
       <div id="view-import" class="view-section">
         <div class="import-card">
           <div class="import-icon"><span class="material-icons" style="font-size:60px">cloud_upload</span></div>
           <h3>Importar Dados</h3>
-          <p style="color:#666; font-size:0.9rem; margin-bottom:20px;">Use .xlsx ou .csv com colunas: <strong>Nome</strong> e <strong>Telefone</strong>.</p>
+          <p style="color:#666; font-size:0.9rem; margin-bottom:20px;">
+            Suporta <strong>.xlsx, .xls e .csv</strong>.<br>
+            Colunas necessárias: <strong>Nome</strong> e <strong>Telefone</strong>.
+          </p>
+          
           <div class="file-input-wrapper">
             <label class="btn-select-file">
-              <span class="material-icons">folder_open</span> Selecionar
+              <span class="material-icons">folder_open</span> Selecionar Arquivo
               <input type="file" id="fileInput" accept=".csv, .xlsx, .xls" onchange="processarArquivo()">
             </label>
           </div>
         </div>
+
         <div id="importResult" class="import-result">
-          <h4 style="margin-top:0; color:var(--primary)">Resultado</h4>
-          <div class="result-item"><span>Novos (Add):</span><span class="result-value val-success" id="resAdded">0</span></div>
-          <div class="result-item"><span>Já na Lista:</span><span class="result-value val-warn" id="resExists">0</span></div>
-          <div class="result-item" style="border-bottom:none"><span>Repetidos:</span><span class="result-value val-danger" id="resDup">0</span></div>
-          <button class="btn-save-config" onclick="concluirImportacao()" style="margin-top:15px">Concluir</button>
+          <h4 style="margin-top:0; color:var(--primary)">Relatório</h4>
+          <div class="result-item">
+            <span>Novos (Add):</span>
+            <span class="result-value val-success" id="resAdded">0</span>
+          </div>
+          <div class="result-item">
+            <span>Já na Lista:</span>
+            <span class="result-value val-warn" id="resExists">0</span>
+          </div>
+          <div class="result-item" style="border-bottom:none">
+            <span>Repetidos no Arquivo:</span>
+            <span class="result-value val-danger" id="resDup">0</span>
+          </div>
+          <button class="btn-save-config" onclick="concluirImportacao()" style="margin-top:15px">
+            Concluir
+          </button>
         </div>
       </div>
 
-      <!-- CONFIG -->
+      <!-- ABA 4: CONFIG -->
       <div id="view-config" class="view-section">
         <div class="config-card">
           <div class="tag-highlight-box">
-            <div class="tag-info"><h4>Variável Nome</h4><p>Substitui pelo nome do cliente.</p></div>
-            <div class="tag-chip" onclick="copiarTag()"><span class="material-icons" style="font-size:16px">content_copy</span> {nome}</div>
+            <div class="tag-info">
+              <h4>Variável de Nome</h4>
+              <p>Substitui pelo nome do cliente.</p>
+            </div>
+            <div class="tag-chip" onclick="copiarTag()">
+              <span class="material-icons" style="font-size:16px">content_copy</span> {nome}
+            </div>
           </div>
           <label style="margin-left:5px;">Modelo da Mensagem</label>
-          <textarea id="templateMsg" placeholder="Ex: Olá {nome}..."></textarea>
-          <button class="btn-save-config" onclick="salvarTemplate()"><span class="material-icons">save</span> Salvar</button>
+          <textarea id="templateMsg" placeholder="Ex: Olá {nome}, temos novidades!"></textarea>
+          <button class="btn-save-config" onclick="salvarTemplate()">
+            <span class="material-icons">save</span> Salvar Modelo
+          </button>
         </div>
-        <div class="app-footer">Desenvolvido por Thiego Pereira</div>
+        
+        <!-- CRÉDITOS -->
+        <div class="app-footer">
+          Desenvolvido por Thiego Pereira
+        </div>
       </div>
     </div>
 
-    <!-- NAV -->
+    <!-- MENU DE NAVEGAÇÃO -->
     <nav class="bottom-nav">
-      <button class="nav-item active" onclick="mudarAba('home', this)"><span class="material-icons">people</span><span>Contatos</span></button>
-      <button class="nav-item" onclick="mudarAba('enviados', this)"><span class="material-icons">task_alt</span><span>Enviados</span></button>
-      <button class="nav-item" onclick="mudarAba('import', this)"><span class="material-icons">upload_file</span><span>Importar</span></button>
-      <button class="nav-item" onclick="mudarAba('config', this)"><span class="material-icons">settings</span><span>Ajustes</span></button>
+      <button class="nav-item active" onclick="mudarAba('home', this)">
+        <span class="material-icons">people</span><span>Contatos</span>
+      </button>
+      <button class="nav-item" onclick="mudarAba('enviados', this)">
+        <span class="material-icons">task_alt</span><span>Enviados</span>
+      </button>
+      <button class="nav-item" onclick="mudarAba('import', this)">
+        <span class="material-icons">upload_file</span><span>Importar</span>
+      </button>
+      <button class="nav-item" onclick="mudarAba('config', this)">
+        <span class="material-icons">settings</span><span>Ajustes</span>
+      </button>
     </nav>
 
     <!-- MODAIS -->
     <div id="modalConfirm" class="modal-overlay">
       <div class="modal">
-        <h2 id="confirmTitle">Confirmação</h2><p id="confirmText">?</p>
-        <div class="modal-buttons"><button class="btn-cancel" onclick="fecharModal('modalConfirm')">Não</button><button class="btn-confirm" id="btnConfirmYes">Sim</button></div>
+        <h2 id="confirmTitle">Confirmação</h2>
+        <p id="confirmText">Tem certeza?</p>
+        <div class="modal-buttons">
+          <button class="btn-cancel" onclick="fecharModal('modalConfirm')">Não</button>
+          <button class="btn-confirm" id="btnConfirmYes">Sim</button>
+        </div>
       </div>
     </div>
+
     <div id="modalEdit" class="modal-overlay">
       <div class="modal">
-        <h2>Editar</h2><input type="hidden" id="editId"><label>Nome</label><input type="text" id="editName"><label>WhatsApp</label><input type="tel" id="editPhone">
-        <div class="modal-buttons"><button class="btn-cancel" onclick="fecharModal('modalEdit')">Cancelar</button><button class="btn-confirm" onclick="confirmarEdicao()">Salvar</button></div>
+        <h2>Editar Contato</h2>
+        <input type="hidden" id="editId">
+        <label>Nome</label><input type="text" id="editName">
+        <label>WhatsApp</label><input type="tel" id="editPhone">
+        <div class="modal-buttons">
+          <button class="btn-cancel" onclick="fecharModal('modalEdit')">Cancelar</button>
+          <button class="btn-confirm" onclick="confirmarEdicao()">Salvar</button>
+        </div>
       </div>
     </div>
+
+    <!-- MODAL ADICIONAR (NOVO) -->
     <div id="modalAdd" class="modal-overlay">
       <div class="modal">
-        <h2>Adicionar</h2><label>Nome</label><input type="text" id="addName"><label>WhatsApp</label><input type="tel" id="addPhone" placeholder="DDD+Número">
-        <div class="modal-buttons"><button class="btn-cancel" onclick="fecharModal('modalAdd')">Cancelar</button><button class="btn-confirm" onclick="confirmarAdicionar()">Adicionar</button></div>
+        <h2>Adicionar Contato</h2>
+        <label>Nome</label>
+        <input type="text" id="addName" placeholder="Nome do cliente">
+        <label>WhatsApp</label>
+        <input type="tel" id="addPhone" placeholder="DDD + Número">
+        <div class="modal-buttons">
+          <button class="btn-cancel" onclick="fecharModal('modalAdd')">Cancelar</button>
+          <button class="btn-confirm" onclick="confirmarAdicionar()">Adicionar</button>
+        </div>
       </div>
     </div>
+
     <div id="modalSend" class="modal-overlay">
       <div class="modal">
-        <h2>Enviar</h2><input type="hidden" id="sendId"><input type="hidden" id="sendPhone"><input type="hidden" id="sendName"><textarea id="sendMessage" rows="6"></textarea>
-        <div class="modal-buttons"><button class="btn-cancel" onclick="fecharModal('modalSend')">Voltar</button><button class="btn-confirm" onclick="finalizarEnvio()">Enviar</button></div>
+        <h2>Enviar Mensagem</h2>
+        <input type="hidden" id="sendId">
+        <input type="hidden" id="sendPhone">
+        <input type="hidden" id="sendName"> 
+        <textarea id="sendMessage" rows="6"></textarea>
+        <div class="modal-buttons">
+          <button class="btn-cancel" onclick="fecharModal('modalSend')">Voltar</button>
+          <button class="btn-confirm" onclick="finalizarEnvio()">
+            Enviar <span class="material-icons" style="font-size:16px; vertical-align:middle">open_in_new</span>
+          </button>
+        </div>
       </div>
     </div>
 
     <script>
+      // CHAVE DO CACHE LOCAL
       const CACHE_KEY = 'app_whatsapp_br_v1';
-      let listaContatos=[], listaEnviados=[], templateAtual="";
 
-      // --- HELPERS ---
-      function showLoader(s,t="Carregando..."){const e=document.getElementById('loading-overlay');document.getElementById('loading-text').innerText=t;e.style.opacity=s?"1":"0";e.style.pointerEvents=s?"all":"none";}
-      function toggleSync(s){document.getElementById('sync-indicator').style.display=s?'flex':'none';}
-      function showToast(m){const c=document.getElementById('toast-container'),t=document.createElement('div');t.className='toast';t.innerText=m;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300)},3000);}
-      function askConfirm(t,m,cb){document.getElementById('confirmTitle').innerText=t;document.getElementById('confirmText').innerText=m;const b=document.getElementById('btnConfirmYes'),n=b.cloneNode(true);b.parentNode.replaceChild(n,b);n.onclick=()=>{fecharModal('modalConfirm');cb();};document.getElementById('modalConfirm').style.display='flex';}
-      function fecharModal(id){document.getElementById(id).style.display='none';}
-      function safe(s){return s?s.replace(/'/g,"").replace(/"/g,""):"";}
-      function validarTelefone(f){if(!f)return false;const n=String(f).replace(/\D/g,'');return n.length>=10&&n.length<=11;}
-      function copiarTag(){const e=document.createElement('textarea');e.value="{nome}";document.body.appendChild(e);e.select();document.execCommand('copy');document.body.removeChild(e);showToast("Copiado!");}
+      // --- UI HELPERS ---
+      
+      function showLoader(show, text="Carregando...") {
+        const el = document.getElementById('loading-overlay');
+        document.getElementById('loading-text').innerText = text;
+        if (show) { el.style.opacity = "1"; el.style.pointerEvents = "all"; } 
+        else { el.style.opacity = "0"; el.style.pointerEvents = "none"; }
+      }
+
+      function toggleSyncIndicator(show) {
+        // Agora o elemento existe no HTML, então não vai dar erro
+        const indicator = document.getElementById('sync-indicator');
+        if(indicator) indicator.style.display = show ? 'flex' : 'none';
+      }
+
+      function showToast(msg) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerText = msg;
+        container.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+      }
+
+      function askConfirm(title, text, callback) {
+        document.getElementById('confirmTitle').innerText = title;
+        document.getElementById('confirmText').innerText = text;
+        const btnYes = document.getElementById('btnConfirmYes');
+        const newBtn = btnYes.cloneNode(true);
+        btnYes.parentNode.replaceChild(newBtn, btnYes);
+        newBtn.onclick = function() { fecharModal('modalConfirm'); callback(); };
+        document.getElementById('modalConfirm').style.display = 'flex';
+      }
+
+      function copiarTag() {
+        const el = document.createElement('textarea');
+        el.value = "{nome}";
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        showToast("Tag {nome} copiada!");
+      }
+
+      // Validação: Aceita 10 ou 11 dígitos
+      function validarTelefone(fone) {
+        if (!fone) return false;
+        const numeros = String(fone).replace(/\D/g, '');
+        return numeros.length >= 10 && numeros.length <= 11;
+      }
+
+      // --- VARIÁVEIS GLOBAIS ---
+      let listaContatos = [];
+      let listaEnviados = [];
+      let templateAtual = "";
+
+      // --- INICIALIZAÇÃO ---
+      window.onload = function() {
+        if (!API_URL) { document.getElementById('setup-warning').style.display='block'; return; }
+        carregarLocalmente();
+        sincronizarComNuvem();
+      };
+
+      // Carrega do LocalStorage (Instantâneo)
+      function carregarLocalmente() {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+            try {
+                const data = JSON.parse(cached);
+                listaContatos = data.contatos || [];
+                listaEnviados = data.enviados || [];
+                templateAtual = data.template || "";
+                atualizarInterface();
+            } catch (e) { console.error(e); }
+        }
+      }
+
+      // Salva no LocalStorage
+      function salvarLocalmente() {
+        const data = { contatos: listaContatos, enviados: listaEnviados, template: templateAtual, timestamp: new Date().getTime() };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+      }
 
       // --- API CLIENT ---
       async function callApi(action, params={}, method='POST') {
         if(!API_URL) throw new Error("API_URL não configurada.");
+        
+        // Se for GET, monta a URL com parâmetros (para 'getDados' principalmente)
+        if (method === 'GET') {
+           const url = new URL(API_URL);
+           url.searchParams.append('action', action);
+           for (const key in params) {
+             url.searchParams.append(key, params[key]);
+           }
+           const response = await fetch(url.toString());
+           return await response.json();
+        }
+
+        // Padrão POST
         const response = await fetch(API_URL, {
           method: 'POST',
           body: JSON.stringify({ action, params }),
@@ -341,131 +502,408 @@
         return await response.json();
       }
 
-      // --- APP LOGIC ---
-      window.onload = function() {
-        if(!API_URL) { document.getElementById('setup-warning').style.display='block'; return; }
-        carregarLocalmente();
-        sincronizarComNuvem();
-      };
-
-      function carregarLocalmente(){const c=localStorage.getItem(CACHE_KEY);if(c){try{const d=JSON.parse(c);listaContatos=d.contatos||[];listaEnviados=d.enviados||[];templateAtual=d.template||"";atualizarInterface();}catch(e){}}}
-      function salvarLocalmente(){localStorage.setItem(CACHE_KEY,JSON.stringify({contatos:listaContatos,enviados:listaEnviados,template:templateAtual}));}
-      
-      function sincronizarComNuvem(force=false){
-        if(force) showLoader(true,"Atualizando...");
-        callApi('getDados').then(res=>{
-          if(force) showLoader(false);
-          if(res.success){listaContatos=res.contatos||[];listaEnviados=res.enviados||[];templateAtual=res.template||"";salvarLocalmente();atualizarInterface();if(force)showToast("Atualizado!");}
-        }).catch(e=>{if(force)showLoader(false);console.error(e);});
+      // Pega dados novos da planilha (Com opção de Forçar)
+      function sincronizarComNuvem(force = false) {
+        if(force) showLoader(true, "Atualizando...");
+        toggleSyncIndicator(true);
+        
+        // Usa GET para leitura
+        callApi('getDados', {}, 'GET')
+          .then(res => {
+             toggleSyncIndicator(false);
+             if(force) showLoader(false);
+             
+             if (res.success) {
+                 listaContatos = res.contatos || [];
+                 listaEnviados = res.enviados || [];
+                 templateAtual = res.template || "";
+                 salvarLocalmente();
+                 atualizarInterface();
+                 if(force) showToast("Lista atualizada!");
+             } else {
+                 console.error("Erro API:", res.error);
+                 if(force) showToast("Erro: " + res.error);
+             }
+          })
+          .catch(err => { 
+             toggleSyncIndicator(false);
+             if(force) showLoader(false);
+             console.error(err); 
+             if(force) showToast("Erro de conexão.");
+          });
       }
 
-      function atualizarInterface(){const t=document.getElementById('templateMsg');if(t&&document.activeElement!==t)t.value=templateAtual;filtrarListas();}
-
-      // --- RENDER ---
-      function mudarAba(a,b){
-        document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active'));document.getElementById('view-'+a).classList.add('active');
-        document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));if(b)b.classList.add('active');
-        const s=document.getElementById('searchArea'), fab=document.getElementById('fabAddContact');
-        if(a==='config'||a==='import'){s.style.display='none';if(fab)fab.style.display='none';}
-        else{s.style.display='flex';if(fab)fab.style.display=(a==='home'?'flex':'none');filtrarListas();}
+      function atualizarInterface() {
+        const txtMsg = document.getElementById('templateMsg');
+        if(txtMsg && document.activeElement !== txtMsg) {
+            txtMsg.value = templateAtual;
+        }
+        filtrarListas();
       }
-      function filtrarListas(){if(document.getElementById('view-home').classList.contains('active'))renderLista(listaContatos,'contactList',false);else if(document.getElementById('view-enviados').classList.contains('active'))renderLista(listaEnviados,'enviadosList',true);}
-      
-      function renderLista(l,dId,isE){
-        const div=document.getElementById(dId);div.innerHTML="";const term=document.getElementById('searchInput').value.toLowerCase();
-        const filt=l.filter(c=>{if(!c||c.length<3||!c[0])return false;return (c[1]||"").toLowerCase().includes(term)||(c[2]||"").toString().includes(term);});
-        if(filt.length===0){div.innerHTML=`<div class="empty-state"><span class="material-icons">search_off</span><p>Vazio</p></div>`;return;}
-        filt.forEach(c=>{
-          const id=c[0],nm=c[1]||"Sem Nome",fn=c[2]||"";const v=validarTelefone(fn);
-          const bg=!v&&!isE?`<span class="invalid-badge"><span class="material-icons warning">warning</span> Erro</span>`:"";
-          const cl=!v&&!isE?'card-invalid':(isE?'card-done':'card-pending');
-          let act="";
-          if(isE) act=`<button class="btn-icon" onclick="restaurarContato('${id}','${safe(nm)}','${safe(fn)}')"><span class="material-icons restore">undo</span></button>`;
-          else act=`<button class="btn-icon" ${!v?'disabled':''} onclick="prepararEnvio('${id}','${safe(nm)}','${safe(fn)}')"><span class="material-icons send">send</span></button><button class="btn-icon btn-check" onclick="moverEnviado('${id}','${safe(nm)}','${safe(fn)}')"><span class="material-icons check">check</span></button><button class="btn-icon" onclick="abrirEdicao('${id}','${safe(nm)}','${safe(fn)}')"><span class="material-icons edit">edit</span></button>`;
-          const el=document.createElement('div');el.className=`contact-card ${cl}`;el.id=(isE?'card-env-':'card-')+id;
-          el.innerHTML=`<div class="contact-info"><div class="contact-name">${nm} ${bg}</div><div class="contact-phone"><span class="material-icons" style="font-size:14px">phone</span> ${fn}</div>${isE?`<div class="contact-date">Enviado: ${c[3]||""}</div>`:""}</div><div class="actions">${act}</div>`;
+
+      // --- RENDERIZAÇÃO DAS LISTAS ---
+
+      function mudarAba(aba, btn) {
+        document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
+        document.getElementById('view-' + aba).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) searchInput.value = ""; 
+
+        const searchArea = document.getElementById('searchArea');
+        // Controle de visibilidade do FAB Adicionar
+        const fabAdd = document.getElementById('fabAddContact');
+        
+        if (aba === 'config' || aba === 'import') {
+            searchArea.style.display = 'none';
+            if(fabAdd) fabAdd.style.display = 'none';
+        } else {
+            searchArea.style.display = 'flex';
+            // Mostrar botão de adicionar apenas na aba home
+            if(fabAdd) fabAdd.style.display = (aba === 'home') ? 'flex' : 'none';
+            filtrarListas();
+        }
+      }
+
+      function filtrarListas() {
+        if(document.getElementById('view-home').classList.contains('active')) {
+            renderizarLista();
+        } else if (document.getElementById('view-enviados').classList.contains('active')) {
+            renderizarEnviados();
+        }
+      }
+
+      function renderizarLista() {
+        const div = document.getElementById('contactList');
+        div.innerHTML = "";
+        
+        const termo = document.getElementById('searchInput').value.toLowerCase();
+
+        // Filtra e Remove itens vazios ou inválidos da renderização
+        const filtrados = listaContatos.filter(c => {
+            if (!c || c.length < 3 || !c[0]) return false;
+            const nome = (c[1] || "").toLowerCase();
+            const fone = (c[2] || "").toString();
+            return nome.includes(termo) || fone.includes(termo);
+        });
+
+        if (filtrados.length === 0) {
+          div.innerHTML = `<div class="empty-state"><span class="material-icons">search_off</span><p>${termo ? 'Nenhum contato encontrado.' : 'Tudo pronto! Lista vazia.'}</p></div>`;
+          return;
+        }
+
+        filtrados.forEach((c) => {
+          const id = c[0];
+          const nome = c[1] || "Sem Nome";
+          const fone = c[2] || "";
+          
+          const isValid = validarTelefone(fone);
+          const cardClass = isValid ? 'card-pending' : 'card-invalid';
+          const badge = isValid ? '' : `<span class="invalid-badge"><span class="material-icons warning">warning</span> Inválido</span>`;
+
+          const el = document.createElement('div');
+          el.className = `contact-card ${cardClass}`;
+          el.id = 'card-' + id;
+          
+          el.innerHTML = `
+            <div class="contact-info">
+              <div class="contact-name">${nome} ${badge}</div>
+              <div class="contact-phone"><span class="material-icons" style="font-size:14px">phone</span> ${fone}</div>
+            </div>
+            <div class="actions">
+              <button class="btn-icon" ${!isValid ? 'disabled' : ''} onclick="prepararEnvio('${id}', '${safe(nome)}', '${safe(fone)}')" title="Enviar">
+                <span class="material-icons send">send</span>
+              </button>
+              <button class="btn-icon btn-check" onclick="moverEnviado('${id}', '${safe(nome)}', '${safe(fone)}')" title="Concluir">
+                <span class="material-icons check">check</span>
+              </button>
+              <button class="btn-icon" onclick="abrirEdicao('${id}', '${safe(nome)}', '${safe(fone)}')" title="Editar">
+                <span class="material-icons edit">edit</span>
+              </button>
+            </div>
+          `;
           div.appendChild(el);
         });
       }
 
-      // --- IMPORT ---
-      function processarArquivo(){
-        const f=document.getElementById('fileInput').files[0];if(!f)return;showLoader(true,"Lendo...");
-        const r=new FileReader();
-        r.onload=function(e){
-          const d=new Uint8Array(e.target.result),w=XLSX.read(d,{type:'array'}),sn=w.SheetNames[0],s=w.Sheets[sn],j=XLSX.utils.sheet_to_json(s);
-          showLoader(true,"Processando...");
-          callApi('importarContatos', {lista:j}).then(r=>{
-            showLoader(false);
-            if(r.success){
-              document.getElementById('resAdded').innerText=r.adicionados;document.getElementById('resExists').innerText=r.jaNaLista;document.getElementById('resDup').innerText=r.duplicadosNoArquivo;
-              document.getElementById('importResult').style.display='block'; showToast("Feito!");
-            }else alert("Erro: "+r.error);
-          }).catch(e=>{showLoader(false);alert(e);});
-        };r.readAsArrayBuffer(f);
-      }
-      function concluirImportacao(){document.getElementById('importResult').style.display='none';document.getElementById('fileInput').value="";const btn=document.querySelector('.nav-item[onclick*="home"]');mudarAba('home',btn);sincronizarComNuvem(true);}
+      function renderizarEnviados() {
+        const div = document.getElementById('enviadosList');
+        div.innerHTML = "";
 
-      // --- ACTIONS ---
-      function restaurarTodos(){if(listaEnviados.length===0){showToast("Vazio.");return;}askConfirm("Restaurar Tudo","Mover histórico para pendentes?",()=>{showLoader(true);callApi('restaurarTodosContatos').then(()=>{showLoader(false);showToast("Restaurado!");sincronizarComNuvem(true);});});}
-      
-      function moverEnviado(id,n,f){
-        askConfirm("Concluir","Mover para enviados?",()=>{
-          document.getElementById('card-'+id).classList.add('removing');
-          const i=listaContatos.findIndex(x=>x[0]==id);
-          if(i>-1){const it=listaContatos.splice(i,1)[0];it[3]=new Date().toLocaleString();listaEnviados.push(it);salvarLocalmente();}
-          callApi('moverParaEnviados',{id,nome:n,numero:f}); setTimeout(()=>{filtrarListas();showToast("Feito!");},300);
-        });
-      }
-      
-      function restaurarContato(id,n,f){
-        askConfirm("Restaurar","Voltar para pendentes?",()=>{
-          document.getElementById('card-env-'+id).classList.add('restoring');
-          const i=listaEnviados.findIndex(x=>x[0]==id);
-          if(i>-1){const it=listaEnviados.splice(i,1)[0];listaContatos.push(it);salvarLocalmente();}
-          callApi('moverParaContatos',{id,nome:n,numero:f}); setTimeout(()=>{filtrarListas();showToast("Feito!");},300);
-        });
-      }
+        const termo = document.getElementById('searchInput').value.toLowerCase();
 
-      function abrirAdicionar(){document.getElementById('addName').value="";document.getElementById('addPhone').value="";document.getElementById('modalAdd').style.display='flex';}
-      
-      function confirmarAdicionar(){
-        const n=document.getElementById('addName').value, f=document.getElementById('addPhone').value;
-        if(!n||!f){showToast("Preencha tudo");return;} if(!validarTelefone(f)){showToast("Número inválido");return;}
-        showLoader(true);
-        callApi('adicionarContato',{nome:n,telefone:f}).then(res=>{
-          showLoader(false);
-          if(res.success){ showToast("Adicionado!"); fecharModal('modalAdd'); listaContatos.push([res.id,n,f]); salvarLocalmente(); filtrarListas(); }
-          else alert(res.error);
+        const filtrados = listaEnviados.filter(c => {
+            if (!c || c.length < 3) return false;
+            const nome = (c[1] || "").toLowerCase();
+            const fone = (c[2] || "").toString();
+            return nome.includes(termo) || fone.includes(termo);
+        });
+
+        if (filtrados.length === 0) {
+          div.innerHTML = `<div class="empty-state"><span class="material-icons">history</span><p>Histórico vazio.</p></div>`;
+          return;
+        }
+
+        filtrados.forEach((c) => {
+          const id = c[0];
+          const nome = c[1];
+          const fone = c[2];
+          const data = c[3] || ""; 
+
+          const el = document.createElement('div');
+          el.className = 'contact-card card-done';
+          el.id = 'card-env-' + id;
+
+          el.innerHTML = `
+            <div class="contact-info">
+              <div class="contact-name">${nome}</div>
+              <div class="contact-phone">${fone}</div>
+              <div class="contact-date">Enviado: ${data}</div>
+            </div>
+            <div class="actions">
+              <button class="btn-icon" onclick="restaurarContato('${id}', '${safe(nome)}', '${safe(fone)}')" title="Restaurar">
+                <span class="material-icons restore">undo</span>
+              </button>
+            </div>
+          `;
+          div.appendChild(el);
         });
       }
 
-      function confirmarEdicao(){
-        const id=document.getElementById('editId').value,n=document.getElementById('editName').value,f=document.getElementById('editPhone').value;
-        const i=listaContatos.findIndex(x=>x[0]==id);
-        if(i>-1){listaContatos[i][1]=n;listaContatos[i][2]=f;salvarLocalmente();filtrarListas();}
-        fecharModal('modalEdit');showToast("Salvo!");callApi('salvarEdicao',{id,nome:n,numero:f});
+      function safe(str) { return str ? str.replace(/'/g, "").replace(/"/g, "") : ""; }
+
+      // --- IMPORTAÇÃO DE ARQUIVO (Excel/CSV) ---
+      function processarArquivo() {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        showLoader(true, "Lendo arquivo...");
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const data = new Uint8Array(e.target.result);
+          // Lê o arquivo usando SheetJS
+          const workbook = XLSX.read(data, {type: 'array'});
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          // Converte para JSON
+          const json = XLSX.utils.sheet_to_json(sheet);
+          
+          showLoader(true, "Processando contatos...");
+          
+          // Envia JSON pronto para o Google Apps Script
+          callApi('importarContatos', {lista: json})
+            .then(resultado => {
+               showLoader(false);
+               if(resultado.success) {
+                 document.getElementById('resAdded').innerText = resultado.adicionados;
+                 document.getElementById('resExists').innerText = resultado.jaNaLista;
+                 document.getElementById('resDup').innerText = resultado.duplicadosNoArquivo;
+                 document.getElementById('importResult').style.display = 'block';
+                 showToast("Importação concluída!");
+               } else {
+                 alert("Erro na importação: " + resultado.error);
+               }
+            })
+            .catch(err => {
+               showLoader(false);
+               alert("Erro servidor: " + err);
+            });
+        };
+        reader.readAsArrayBuffer(file);
       }
 
-      function prepararEnvio(id,n,f){
-        let m=templateAtual.replace(/{nome}/gi,n);
-        document.getElementById('sendId').value=id;document.getElementById('sendPhone').value=f;document.getElementById('sendName').value=n;document.getElementById('sendMessage').value=m;
-        document.getElementById('modalSend').style.display='flex';
+      function concluirImportacao() {
+        document.getElementById('importResult').style.display = 'none';
+        document.getElementById('resAdded').innerText = "0";
+        document.getElementById('resExists').innerText = "0";
+        document.getElementById('resDup').innerText = "0";
+        document.getElementById('fileInput').value = "";
+        
+        // Limpa cache local para garantir integridade
+        localStorage.removeItem(CACHE_KEY);
+        listaContatos = [];
+        listaEnviados = [];
+
+        // Volta para a home
+        const homeBtn = document.querySelector('.nav-item[onclick*="home"]');
+        mudarAba('home', homeBtn);
+        
+        // Força sincronização
+        sincronizarComNuvem(true);
       }
 
-      function finalizarEnvio(){
-        let fIn=document.getElementById('sendPhone').value,n=document.getElementById('sendName').value,msg=document.getElementById('sendMessage').value,id=document.getElementById('sendId').value;
-        let f=String(fIn).replace(/\D/g,''); if(f.length>=10&&f.length<=11)f='55'+f;else if(!f.startsWith('55')&&f.length>0)f='55'+f;
-        const a=document.createElement('a');a.href=`https://api.whatsapp.com/send?phone=${f}&text=${encodeURIComponent(msg)}`;a.target="_blank";a.rel="noopener noreferrer";a.click();
-        fecharModal('modalSend');showToast("Abrindo WhatsApp...");
-        const c=document.getElementById('card-'+id);if(c)c.classList.add('removing');
-        const i=listaContatos.findIndex(x=>x[0]==id);
-        if(i>-1){const it=listaContatos.splice(i,1)[0];it[3]=new Date().toLocaleString();listaEnviados.push(it);salvarLocalmente();}
-        setTimeout(()=>filtrarListas(),500);callApi('moverParaEnviados',{id,nome:n,numero:fIn});
+      // --- AÇÕES DO USUÁRIO ---
+
+      function restaurarTodos() {
+        if (listaEnviados.length === 0) { showToast("A lista já está vazia."); return; }
+        
+        askConfirm("Restaurar Tudo", "Mover todo o histórico de volta para pendentes?", () => {
+          showLoader(true, "Restaurando...");
+          callApi('restaurarTodosContatos')
+            .then(res => {
+               showLoader(false);
+               showToast(res.message || "Restaurado!");
+               sincronizarComNuvem(true);
+            })
+            .catch(err => {
+               showLoader(false);
+               showToast("Erro: " + err);
+            });
+        });
       }
 
-      function abrirEdicao(id,n,f){document.getElementById('editId').value=id;document.getElementById('editName').value=n;document.getElementById('editPhone').value=f;document.getElementById('modalEdit').style.display='flex';}
-      function salvarTemplate(){const m=document.getElementById('templateMsg').value;templateAtual=m;salvarLocalmente();showToast("Enviando...");callApi('salvarTemplate',{mensagem:m}).then(()=>showToast("Salvo na nuvem!"));}
+      function moverEnviado(id, nome, fone) {
+        askConfirm("Concluir", `Marcar ${nome} como enviado?`, () => {
+          const card = document.getElementById('card-' + id);
+          if(card) card.classList.add('removing');
+          
+          const index = listaContatos.findIndex(c => c[0] == id);
+          if(index > -1) {
+             const item = listaContatos.splice(index, 1)[0];
+             item[3] = new Date().toLocaleString(); 
+             listaEnviados.push(item);
+             salvarLocalmente();
+          }
+          callApi('moverParaEnviados', {id, nome, numero: fone});
+          setTimeout(() => { filtrarListas(); showToast("Concluído!"); }, 300);
+        });
+      }
+
+      function restaurarContato(id, nome, fone) {
+        askConfirm("Restaurar", `Devolver ${nome} para pendentes?`, () => {
+          const card = document.getElementById('card-env-' + id);
+          if(card) card.classList.add('restoring');
+          
+          const index = listaEnviados.findIndex(c => c[0] == id);
+          if(index > -1) {
+             const item = listaEnviados.splice(index, 1)[0];
+             listaContatos.push(item);
+             salvarLocalmente();
+          }
+          callApi('moverParaContatos', {id, nome, numero: fone});
+          setTimeout(() => { filtrarListas(); showToast("Restaurado!"); }, 300);
+        });
+      }
+
+      function abrirAdicionar() {
+        document.getElementById('addName').value = "";
+        document.getElementById('addPhone').value = "";
+        document.getElementById('modalAdd').style.display = 'flex';
+      }
+
+      function confirmarAdicionar() {
+        const nome = document.getElementById('addName').value;
+        const fone = document.getElementById('addPhone').value;
+
+        if (!nome || !fone) {
+          showToast("Preencha todos os campos.");
+          return;
+        }
+
+        if (!validarTelefone(fone)) {
+          showToast("Número de telefone inválido.");
+          return;
+        }
+
+        showLoader(true, "Adicionando...");
+        callApi('adicionarContato', {nome, telefone: fone})
+          .then(res => {
+             showLoader(false);
+             if (res.success) {
+               showToast("Adicionado com sucesso!");
+               fecharModal('modalAdd');
+               // Adiciona localmente (Otimista)
+               listaContatos.push([res.id, nome, fone]);
+               salvarLocalmente();
+               filtrarListas();
+             } else {
+               alert("Erro: " + res.error);
+             }
+          })
+          .catch(err => {
+             showLoader(false);
+             alert("Erro no servidor: " + err);
+          });
+      }
+
+      function confirmarEdicao() {
+        const id = document.getElementById('editId').value;
+        const nome = document.getElementById('editName').value;
+        const fone = document.getElementById('editPhone').value;
+        
+        const index = listaContatos.findIndex(c => c[0] == id);
+        if(index > -1) {
+            listaContatos[index][1] = nome;
+            listaContatos[index][2] = fone;
+            salvarLocalmente();
+            filtrarListas();
+        }
+        fecharModal('modalEdit');
+        showToast("Editado! Sincronizando...");
+        callApi('salvarEdicao', {id, nome, numero: fone});
+      }
+
+      function abrirEdicao(id, nome, fone) {
+        document.getElementById('editId').value = id;
+        document.getElementById('editName').value = nome;
+        document.getElementById('editPhone').value = fone;
+        document.getElementById('modalEdit').style.display = 'flex';
+      }
+
+      function prepararEnvio(id, nome, fone) {
+        let msg = templateAtual.replace(/{nome}/gi, nome);
+        document.getElementById('sendId').value = id;
+        document.getElementById('sendPhone').value = fone;
+        document.getElementById('sendName').value = nome; 
+        document.getElementById('sendMessage').value = msg;
+        document.getElementById('modalSend').style.display = 'flex';
+      }
+
+      function finalizarEnvio() {
+        let foneInput = document.getElementById('sendPhone').value;
+        let nome = document.getElementById('sendName').value;
+        let msg = document.getElementById('sendMessage').value;
+        let id = document.getElementById('sendId').value;
+        
+        let fone = String(foneInput).replace(/\D/g, ''); 
+        if (fone.length >= 10 && fone.length <= 11) fone = '55' + fone;
+        else if (!fone.startsWith('55') && fone.length > 0) fone = '55' + fone;
+
+        const link = "https://api.whatsapp.com/send?phone=" + fone + "&text=" + encodeURIComponent(msg);
+        const a = document.createElement('a');
+        a.href = link; a.target = "_blank"; a.rel = "noopener noreferrer";
+        a.click();
+        
+        fecharModal('modalSend');
+        showToast("WhatsApp aberto!");
+
+        const card = document.getElementById('card-' + id);
+        if(card) card.classList.add('removing');
+        
+        const index = listaContatos.findIndex(c => c[0] == id);
+        if(index > -1) {
+             const item = listaContatos.splice(index, 1)[0];
+             item[3] = new Date().toLocaleString(); 
+             listaEnviados.push(item);
+             salvarLocalmente();
+        }
+        setTimeout(() => filtrarListas(), 500);
+        callApi('moverParaEnviados', {id, nome, numero: foneInput});
+      }
+
+      function salvarTemplate() {
+        const msg = document.getElementById('templateMsg').value;
+        templateAtual = msg;
+        salvarLocalmente();
+        showToast("Salvo localmente. Enviando...");
+        callApi('salvarTemplate', {mensagem: msg}).then(() => showToast("Salvo na nuvem!"));
+      }
+
+      function fecharModal(id) { document.getElementById(id).style.display = 'none'; }
     </script>
   </body>
 </html>
